@@ -12,9 +12,14 @@ function getAdmin() {
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     } else {
-      // 2. Try local file
+      // 2. Try local file (development only)
       const p = path.resolve(__dirname, '../../firebase-service-account.json');
-      sa = require(p);
+      if (require('fs').existsSync(p)) {
+        sa = require(p);
+      } else {
+        console.warn('⚠️ FIREBASE_SERVICE_ACCOUNT env var is missing and local JSON file not found.');
+        return null;
+      }
     }
 
     if (!admin.apps.length) {

@@ -2,7 +2,7 @@ const express = require('express');
 const router  = express.Router();
 const ctrl    = require('../controllers/groupController');
 const authMw  = require('../middleware/auth');
-const upload  = require('../middleware/upload');
+const { memoryUpload: upload } = require('../middleware/upload');
 
 router.use(authMw);
 
