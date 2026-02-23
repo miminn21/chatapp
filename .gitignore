@@ -1,0 +1,17 @@
+# Root ignores
+.idea/
+.vscode/
+*.txt
+analyze_output.txt
+
+# Backend sub-project ignores
+backend/node_modules/
+backend/uploads/
+backend/.env
+backend/firebase-service-account.json
+
+# Flutter sub-project (handled by its own .gitignore, but for safety)
+chatapp/.dart_tool/
+chatapp/build/
+chatapp/.flutter-plugins
+chatapp/.flutter-plugins-dependencies
