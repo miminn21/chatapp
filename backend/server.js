@@ -41,7 +41,12 @@ socketHandler(io);
 
 // Start
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+const initDb = require('./src/config/initDb');
+
+server.listen(PORT, async () => {
   console.log(`🚀 ChatApp backend running on http://localhost:${PORT}`);
   console.log('📡 Socket.io ready');
+  
+  // Auto-init database tables
+  await initDb();
 });
