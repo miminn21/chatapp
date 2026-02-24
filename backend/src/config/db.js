@@ -1,52 +1,76 @@
 const mariadb = require('mariadb');
+const { URL } = require('url');
 
-// Store config for logging
-let currentConfig = 'unknown';
+// Global state for logging
+global.dbLogged = false;
+
 let pool;
+let currentConfigDesc = 'not-set';
 
 try {
-  let dbParams = process.env.MYSQL_URL || {
-    host    : process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
-    user    : process.env.DB_USER || process.env.MYSQLUSER || 'root',
-    password: process.env.DB_PASS || process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
-    database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'railway',
-    port    : parseInt(process.env.DB_PORT || process.env.MYSQLPORT || 3306),
-    connectionLimit: 10,
-    connectTimeout: 30000,
-    bigIntAsNumber : true,
-  };
+  let dbConfig;
 
-  if (typeof dbParams === 'string') {
-    // Railway provides 'mysql://', but some drivers/versions of MariaDB node client 
-    // strictly want 'mariadb://'. Let's ensure it's compatible.
-    if (dbParams.startsWith('mysql://')) {
-      dbParams = dbParams.replace('mysql://', 'mariadb://');
+  if (process.env.MYSQL_URL) {
+    const urlString = process.env.MYSQL_URL;
+    try {
+      // Manual parsing to be safe and cross-compatible
+      const parsed = new URL(urlString);
+      dbConfig = {
+        host: parsed.hostname,
+        port: parseInt(parsed.port) || 3306,
+        user: parsed.username,
+        password: decodeURIComponent(parsed.password),
+        database: parsed.pathname.substring(1), // Remove leading slash
+        connectionLimit: 10,
+        connectTimeout: 30000,
+        bigIntAsNumber : true,
+      };
+      currentConfigDesc = `MYSQL_URL (${dbConfig.host})`;
+      console.log(`🔗 Database: Successfully parsed MYSQL_URL for host ${dbConfig.host}`);
+    } catch (parseErr) {
+      console.error('⚠️ Failed to parse MYSQL_URL, falling back to individual variables:', parseErr.message);
+      // Fallback below
     }
-    currentConfig = 'MYSQL_URL';
-    console.log('🔗 Database: Using converted MYSQL_URL');
-  } else {
-    currentConfig = `host=${dbParams.host}, db=${dbParams.database}`;
-    console.log(`🔌 Database: Using individual variables (${currentConfig})`);
   }
 
-  pool = mariadb.createPool(dbParams);
+  if (!dbConfig) {
+    dbConfig = {
+      host: process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
+      user: process.env.DB_USER || process.env.MYSQLUSER || 'root',
+      password: process.env.DB_PASS || process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
+      database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'railway',
+      port: parseInt(process.env.DB_PORT || process.env.MYSQLPORT || 3306),
+      connectionLimit: 10,
+      connectTimeout: 30000,
+      bigIntAsNumber : true,
+    };
+    currentConfigDesc = `Variables (${dbConfig.host})`;
+    console.log(`🔌 Database: Using individual variables for host ${dbConfig.host}`);
+  }
+
+  pool = mariadb.createPool(dbConfig);
 } catch (err) {
-  console.error('❌ Failed to create MariaDB pool:', err.message);
+  console.error('❌ FATAL: Failed to initialize database pool:', err.message);
 }
 
+/**
+ * Execute SQL queries
+ */
 async function query(sql, params = []) {
+  if (!pool) {
+    throw new Error('Database pool not initialized. Check server logs for fatal errors.');
+  }
+
   let conn;
   try {
-    // Log connection details ONLY for the very first query to help diagnostics
     if (!global.dbLogged) {
-      console.log(`🔌 DB First Query: ${currentConfig}`);
+      console.log(`🚀 Performing first database query using ${currentConfigDesc}`);
       global.dbLogged = true;
     }
-    if (!pool) throw new Error('Database pool not initialized');
     conn = await pool.getConnection();
     return await conn.query(sql, params);
   } catch (err) {
-    console.error(`❌ DB Query Error: ${err.message}`);
+    console.error(`❌ Database Query Failure: ${err.message}`);
     throw err;
   } finally {
     if (conn) conn.release();
