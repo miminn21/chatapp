@@ -1,3 +1,5 @@
+const mariadb = require('mariadb');
+
 // Store config for logging
 let currentConfig = 'unknown';
 let pool;
