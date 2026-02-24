@@ -6,7 +6,9 @@ async function initDatabase(retries = 5) {
   for (let i = 1; i <= retries; i++) {
     try {
       console.log(`📡 Checking database visibility (Attempt ${i}/${retries})...`);
+      console.time(`⏱️  visibility-check-${i}`);
       const tables = await query("SHOW TABLES LIKE 'users'");
+      console.timeEnd(`⏱️  visibility-check-${i}`);
       
       if (tables.length === 0) {
         console.log('📂 Database empty. Starting automatic initialization...');

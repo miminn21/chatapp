@@ -53,27 +53,45 @@ try {
   console.error('❌ FATAL: Failed to initialize database pool:', err.message);
 }
 
+const dns = require('dns');
+
+// Execute DNS lookup for diagnostic
+dns.lookup('mysql.railway.internal', (err, address) => {
+  console.log('🔍 DNS Diagnostics: mysql.railway.internal resolves to ->', address || 'FAILED', err ? `(${err.message})` : '');
+});
+
 /**
  * Execute SQL queries
  */
 async function query(sql, params = []) {
   if (!pool) {
-    throw new Error('Database pool not initialized. Check server logs for fatal errors.');
+    throw new Error('Database pool not initialized.');
   }
 
   let conn;
   try {
     if (!global.dbLogged) {
-      console.log(`🚀 Performing first database query using ${currentConfigDesc}`);
+      console.log(`🚀 [QUERY START] Mode: ${currentConfigDesc}`);
       global.dbLogged = true;
     }
+    
+    console.log(`⏳ [STEP 1] Requesting connection from pool...`);
     conn = await pool.getConnection();
-    return await conn.query(sql, params);
+    console.log(`✅ [STEP 2] Connection obtained.`);
+    
+    console.log(`⏳ [STEP 3] Running query: ${sql.substring(0, 30)}...`);
+    const results = await conn.query(sql, params);
+    console.log(`✅ [STEP 4] Query successful.`);
+    
+    return results;
   } catch (err) {
-    console.error(`❌ Database Query Failure: ${err.message}`);
+    console.error(`❌ Database Error at ${sql.substring(0, 20)}: ${err.message}`);
     throw err;
   } finally {
-    if (conn) conn.release();
+    if (conn) {
+      console.log(`🔌 [STEP 5] Releasing connection back to pool.`);
+      conn.release();
+    }
   }
 }
 
