@@ -35,8 +35,9 @@ try {
 async function query(sql, params = []) {
   let conn;
   try {
+    // Log connection details ONLY for the very first query to help diagnostics
     if (!global.dbLogged) {
-      console.log(`🔌 First Query Attempt using: ${currentConfig}`);
+      console.log(`🔌 DB First Query: ${currentConfig}`);
       global.dbLogged = true;
     }
     if (!pool) throw new Error('Database pool not initialized');
