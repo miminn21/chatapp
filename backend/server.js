@@ -33,8 +33,9 @@ app.use('/api/groups',         groupRoutes);
 app.use('/api/contacts',       contactRoutes);
 app.use('/api/messages',       messageRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date() }));
+// Routes
+app.get('/', (req, res) => res.json({ status: 'ok', message: 'ChatApp Backend API' }));
+app.get('/health', (req, res) => res.json({ status: 'healthy', timestamp: new Date() }));
 
 // Socket.io
 socketHandler(io);

@@ -1,24 +1,33 @@
 const mariadb = require('mariadb');
 
-// Use MYSQL_URL if available, otherwise fallback to individual variables
-const dbConfig = process.env.MYSQL_URL || {
-  host    : process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
-  user    : process.env.DB_USER || process.env.MYSQLUSER || 'root',
-  password: process.env.DB_PASS || process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
-  database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'railway',
-  port    : parseInt(process.env.DB_PORT || process.env.MYSQLPORT || 3306),
-};
+let pool;
 
-// Add common pool options
-const poolOptions = {
-  ...((typeof dbConfig === 'string') ? { connectionString: dbConfig } : dbConfig),
-  connectionLimit: 10,
-  connectTimeout: 30000, // Increased to 30 seconds
-  acquireTimeout: 30000,
-  bigIntAsNumber : true,
-};
+try {
+  let dbParams;
+  
+  if (process.env.MYSQL_URL) {
+    // If we have a full URL, use it directly (Mariadb createPool supports URI)
+    dbParams = process.env.MYSQL_URL;
+    console.log('🔗 Using MYSQL_URL for database connection');
+  } else {
+    // Fallback to individual variables
+    dbParams = {
+      host    : process.env.DB_HOST || process.env.MYSQLHOST || 'localhost',
+      user    : process.env.DB_USER || process.env.MYSQLUSER || 'root',
+      password: process.env.DB_PASS || process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || '',
+      database: process.env.DB_NAME || process.env.MYSQLDATABASE || 'railway',
+      port    : parseInt(process.env.DB_PORT || process.env.MYSQLPORT || 3306),
+      connectionLimit: 10,
+      connectTimeout: 30000,
+      bigIntAsNumber : true,
+    };
+    console.log(`🔌 Using individual variables: host=${dbParams.host}, db=${dbParams.database}`);
+  }
 
-const pool = mariadb.createPool(poolOptions);
+  pool = mariadb.createPool(dbParams);
+} catch (err) {
+  console.error('❌ Failed to create MariaDB pool:', err.message);
+}
 
 async function query(sql, params = []) {
   let conn;
